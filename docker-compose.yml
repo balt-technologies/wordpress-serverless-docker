@@ -1,0 +1,51 @@
+version: '3'
+volumes:
+  db-data:
+    external:
+      name: db-share
+services:
+  db:
+    container_name: db
+    image: 'mysql:latest'
+    env_file:
+      - .env
+    command: '--default-authentication-plugin=mysql_native_password'
+    restart: on-failure
+    volumes:
+      - 'db-data:/var/lib/mysql'
+    environment:
+      MYSQL_USER: '${DB_USERNAME}'
+      MYSQL_PASSWORD: '${DB_PASSWORD}'
+      MYSQL_ROOT_PASSWORD: '${DB_ROOT_PASSWORD}'
+      MYSQL_DATABASE: '${DB_DATABASE}'
+  wp:
+    env_file:
+      - .env
+    container_name: wp
+    build:
+      context: .
+      dockerfile: ./config/local/Dockerfile
+    ports:
+      - '8080:8080'
+    restart: on-failure
+    depends_on:
+      - db
+    links:
+      - db
+    volumes:
+      - './src:/var/www/html/wp-content/themes'
+    environment:
+      APP_ENV: local
+  adminer:
+    container_name: adminer
+    image: 'adminer:latest'
+    restart: on-failure
+    depends_on:
+      - db
+    links:
+      - db
+    ports:
+      - '8081:8080'
+    environment:
+      ADMINER_DEFAULT_SERVER: '${DB_HOST}'
+      ADMINER_PLUGINS: dump-json dump-xml edit-foreign tables-filter
